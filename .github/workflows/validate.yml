@@ -1,0 +1,43 @@
+# Every pull request here proposes a file somebody's SnmpLens will import, and
+# only SnmpLens can say whether it will. So the check builds each model and each
+# preset with the application's own packages — `tools/cataloguecheck` in the
+# SnmpLens repository — rather than reading the format a second time here: a
+# checker that drifts accepts what the import then refuses, which is the one
+# failure a catalogue must not have.
+name: Validate the catalogue
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Nothing here writes: the job reads two repositories and a Go toolchain.
+permissions:
+  contents: read
+
+jobs:
+  cataloguecheck:
+    name: Build every model and preset
+    runs-on: ubuntu-latest
+    steps:
+      - name: The catalogue
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: catalogue
+
+      - name: SnmpLens, whose parser decides
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Wasabules/SnmpLens
+          path: snmplens
+
+      # The application's own Go version, read from its go.mod rather than named
+      # here: one source of truth, and a catalogue accepted by a toolchain the
+      # release is not built with would prove nothing.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: snmplens/go.mod
+
+      - name: cataloguecheck
+        working-directory: snmplens
+        run: go run ./tools/cataloguecheck ../catalogue
